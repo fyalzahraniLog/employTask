@@ -623,7 +623,6 @@ const groupColors = [
       });
   }
   
-  // Helper function to get CSRF token (if not using Axios defaults)
   function getCsrfToken() {
     return document.querySelector('meta[name="csrf-token"]')?.getAttribute("content");
   }
