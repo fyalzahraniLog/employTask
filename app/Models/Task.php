@@ -26,6 +26,12 @@ class Task extends Model
         'status' => TaskStatus::class,
     ];
 
+    // public function getStatusAttribute()
+    // {
+
+    //     return TaskStatus::getFullStatusValue($this->status->value);
+    // }
+
 
     public function group()
     {

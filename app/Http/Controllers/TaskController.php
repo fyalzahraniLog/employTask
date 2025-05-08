@@ -2,14 +2,15 @@
 
 namespace App\Http\Controllers;
 
-use App\Enums\TaskStatus; // Import the enum
+
+use App\Models\Task;
 use App\Models\User;
 use App\Models\Group;
-use App\Models\Task;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\Log; // Import Log facade for logging warnings
-use Illuminate\Support\Str; // Import Str facade (though basic string functions are used here)
+use App\Enums\TaskStatus; // Import the enum
+
+
 
 class TaskController extends Controller
 {
@@ -18,11 +19,12 @@ class TaskController extends Controller
      */
     public function index()
     {
+        $this->updateTaskStatus();
         $user = Auth::user();
         $users = User::all();
         $groups = $user->groups()->with(['tasks.user'])->get();
         // dd($groups->toArray());
-        return view('dashboard', compact('groups'), compact('users'));
+        return view('newGroup', compact('groups'), compact('users'));
     }
 
     /**
@@ -44,15 +46,13 @@ class TaskController extends Controller
         $group->tasks()->create([
             'title' => $validatedData['task'],
             'status' => TaskStatus::PENDING, // Use Enum case directly
-            // 'assigned_to' => auth()->id(), // Optionally assign to creator by default
+
         ]);
 
         // Fetch updated data to return
+        $this->updateTaskStatus();
         $user = Auth::user();
         $groups = $user->groups()->with(['tasks.user'])->get();
-
-
-
 
 
         return response([
@@ -93,52 +93,19 @@ class TaskController extends Controller
 
         ];
 
-        // --- Convert Status to Enum Backing Value ---
-        // if (isset($validatedData['status'])) {
-        //     // Convert the display string (e.g., "In Progress") to the backing value (e.g., "in_progress")
-        //     $statusBackingValue = strtolower($validatedData['status']); // "in progress"
-        //     $statusBackingValue = str_replace(' ', '_', $statusBackingValue); // "in_progress"
-
-        //     // Check if the converted value is a valid backing value for the Enum
-        //     if (TaskStatus::tryFrom($statusBackingValue) !== null) {
-        //         // Use the correct backing value that matches the Enum definition
-        //         $updateData['status'] = $statusBackingValue;
-        //     } else {
-        //         // Log a warning if conversion failed (shouldn't happen if validation 'in' rule is correct)
-        //         Log::warning("Could not convert status '{$validatedData['status']}' to a valid TaskStatus backing value for task ID {$task->id}.");
-        //         // Decide how to handle: skip status update, return error? Skipping for now.
-        //     }
-        // }
-        // --- End Status Conversion ---
-
-        // Handle assigned_to (using validated data)
-        // array_key_exists is safer than isset for checking null values from validation
-        // if (array_key_exists('assigned_to', $validatedData)) {
-        //     // Assign the value (which will be null if nullable validation passed on empty input)
-        //     $updateData['assigned_to'] = $validatedData['assigned_to'];
-        // }
-
-        // // Handle start date (using validated data)
-        // if (array_key_exists('start', $validatedData)) {
-        //     $updateData['start'] = $validatedData['start'];
-        // }
-
-        // // Handle end date (using validated data)
-        // if (array_key_exists('end', $validatedData)) {
-        //     $updateData['end'] = $validatedData['end'];
-        // }
+        if ($validatedData['startDate'] && $validatedData['endDate']) {
+            $updateData['status'] = TaskStatus::NOT_STARTED; // []
+        };
 
         // Update the task with converted/validated data
         $task->update($updateData);
 
         // Retrieve the updated groups data to send back
+        $this->updateTaskStatus();
         $user = Auth::user();
         $groups = $user->groups()->with(['tasks.user'])->get(); // Eager load user for tasks
 
-
-
-
-
+        // Return a success response
         return response([
             'message' => "Task successfully created",
             'data' => $groups,
@@ -163,11 +130,9 @@ class TaskController extends Controller
         $task->delete();
 
         // Fetch updated data to return
+        $this->updateTaskStatus();
         $user = Auth::user();
         $groups = $user->groups()->with(['tasks.user'])->get();
-
-
-
 
 
         return response([
@@ -181,29 +146,35 @@ class TaskController extends Controller
      * Mark a specific task as completed.
      * Note: Route model binding could simplify finding the task.
      */
-    public function complete($id)
+    public function complete(Request $request)
     {
-        $task = Task::find($id);
+        $request->validate([
+            'taskId' => 'required|integer|exists:tasks,id'
+        ]);
 
+
+        $task = Task::find(request('taskId'));
         // Check if task exists and belongs to a group owned by the user (Authorization)
         if (!$task || $task->group->user_id !== auth()->id()) {
             return response(['message' => 'Task not found or unauthorized.'], 404);
         }
+        // dd($task->status, TaskStatus::IN_PROGRESS, $task->status != TaskStatus::IN_PROGRESS);
+        if ($task->status != TaskStatus::IN_PROGRESS) {
 
+            return response(['message' => 'can not mark this task as Completed because its status is not InProgressTask.'], 404);
+        }
         // Update the task status using the Enum case directly
         $task->update([
-            'status' => TaskStatus::COMPLETED, // Use Enum case
+            'status' => TaskStatus::COMPLETED,
         ]);
 
+
         // Retrieve the updated groups data
+        $this->updateTaskStatus();
         $user = Auth::user();
         $groups = $user->groups()->with(['tasks.user'])->get();
 
-
         // Return a success response
-
-
-
         return response([
             'message' => "Task successfully created",
             'data' => $groups,
@@ -211,44 +182,31 @@ class TaskController extends Controller
         ], 201); // Use 201 Created status code 200); // OK
     }
 
-    /**
-     * Update only the status of a task.
-     * (Example of a more specific update method if needed)
-     */
-    public function updateStatus(Request $request, $id)
+
+
+    public function updateTaskStatus()
     {
-        $validatedData = $request->validate([
-            'status' => 'required|string|in:Pending,In Progress,Done,Working on it,Stuck,Not Started,completed,cancelled',
-        ]);
+        $now = now();
 
-        $task = Task::find($id);
+        // Update tasks that should be in progress (for authenticated user only)
+        Task::whereHas('group.user', function ($query) {
+            $query->where('id', Auth::id());
+        })
+            ->where('status', TaskStatus::NOT_STARTED)
+            ->whereNotNull('start')
+            ->whereNotNull('end')
+            ->where('start', '<=', $now)
+            ->where('end', '>=', $now)
+            ->update(['status' => TaskStatus::IN_PROGRESS]);
 
-        if (!$task || $task->group->user_id !== auth()->id()) {
-            return response(['message' => 'Task not found or unauthorized.'], 404);
-        }
+        // Update tasks that should be marked as no show (for authenticated user only)
+        Task::whereHas('group.user', function ($query) {
+            $query->where('id', Auth::id());
+        })
 
-        // Convert status to backing value
-        $statusBackingValue = strtolower($validatedData['status']);
-        $statusBackingValue = str_replace(' ', '_', $statusBackingValue);
-
-        if (TaskStatus::tryFrom($statusBackingValue) !== null) {
-            $task->update(['status' => $statusBackingValue]);
-        } else {
-            Log::warning("Invalid status '{$validatedData['status']}' provided for task ID {$task->id}.");
-            return response(['message' => 'Invalid status provided.'], 422);
-        }
-
-        $user = Auth::user();
-        $groups = $user->groups()->with(['tasks.user'])->get();
-
-
-
-
-
-        return response([
-            'message' => "Task successfully created",
-            'data' => $groups,
-
-        ], 201); // Use 201 Created status code, 200);
+            ->where('end', '<', $now)
+            ->where('status', TaskStatus::IN_PROGRESS)
+            ->whereNotNull('end')
+            ->update(['status' => 'no show']);
     }
 }
