@@ -17,7 +17,7 @@
         <header class="flex p-4 justify-between items-center border-b border-[#333]">
             <div class="flex items-center">
                 <span class="text-xl font-semibold">
-                    <span class="text-[#ff4433]">Yousef.Task</span>
+                    <span class="text-[#ff4433]">empTask</span>
                     <span class="text-white"> - </span>
                     <span class="text-[#7c3aed] font-bold">Tuwaiq</span>
                     <span class="text-white"> Academy</span>
