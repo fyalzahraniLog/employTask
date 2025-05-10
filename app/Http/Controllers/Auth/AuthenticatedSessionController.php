@@ -28,7 +28,8 @@ class AuthenticatedSessionController extends Controller
 
         $request->session()->regenerate();
 
-        return redirect()->intended(route('task', absolute: false));
+        // return redirect()->intended(route('task', absolute: false));
+        return redirect('task');
     }
 
     /**
@@ -42,6 +43,6 @@ class AuthenticatedSessionController extends Controller
 
         $request->session()->regenerateToken();
 
-        return redirect('/');
+        return redirect('/login');
     }
 }

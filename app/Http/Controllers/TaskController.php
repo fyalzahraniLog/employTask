@@ -28,9 +28,9 @@ class TaskController extends Controller
     }
 
     /**
-     * Create a new task for a specific group.
+     * Store a new task in the database.
      */
-    public function create(Request $request)
+    public function store(Request $request)
     {
         $validatedData = $request->validate([
             'task' => 'required|string|max:255',
@@ -63,9 +63,10 @@ class TaskController extends Controller
     }
 
     /**
-     * Edit an existing task.
+     * Update a specific task.
+     * Note: Route model binding could simplify finding the task.
      */
-    public function edit(Request $request)
+    public function update(Request $request)
     {
         // Validate the incoming request data
         $validatedData = $request->validate([
@@ -118,7 +119,7 @@ class TaskController extends Controller
      * Delete a specific task.
      * Note: Route model binding could simplify finding the task.
      */
-    public function delete($id)
+    public function destroy($id)
     {
         $task = Task::find($id);
 
@@ -128,6 +129,7 @@ class TaskController extends Controller
         }
 
         $task->delete();
+
 
         // Fetch updated data to return
         $this->updateTaskStatus();
@@ -183,7 +185,10 @@ class TaskController extends Controller
     }
 
 
-
+    /**
+     * Update the status of tasks based on their start and end times.
+     * This method is called in the index method to ensure task statuses are up-to-date.
+     */
     public function updateTaskStatus()
     {
         $now = now();

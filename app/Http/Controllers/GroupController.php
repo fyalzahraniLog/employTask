@@ -7,7 +7,7 @@ use Illuminate\Foundation\Auth\User;
 
 class GroupController extends Controller
 {
-    public function create(Request $request)
+    public function store(Request $request)
     {
 
         $request->validate([
@@ -21,12 +21,12 @@ class GroupController extends Controller
 
         $groups = auth()->user()->groups()->with('tasks')->get();
         return response([
-            'message' => "You already a member of Zonizer bank",
+            'message' => "Task successfully created",
             'data' => $groups,
 
         ], 200);
     }
-    public function delete($id)
+    public function destroy($id)
     {
         // Find the group by ID
         $group = \App\Models\Group::find($id);
@@ -97,7 +97,7 @@ class GroupController extends Controller
         // Check if the authenticated user owns this group
         if ($group->user_id !== auth()->id()) {
             return response([
-                'message' => 'You are not authorized to update this group',
+                'message' => 'You are not authorized to edit this group',
             ], 403);
         }
 

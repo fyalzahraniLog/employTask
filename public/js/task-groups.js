@@ -1,3 +1,5 @@
+// const { default: axios } = require("axios");
+
 // Color palette for groups
 const groupColors = [
     "#00ff00", "#ff4433", "#7c3aed", "#00e0ff", "#ffb300",
@@ -362,7 +364,7 @@ const groupColors = [
     const taskName = input.value.trim();
     if (taskName === "") return;
   
-    axios.post("/task/create", {
+    axios.post("/task", {
         groupId: groups[groupIdx].id,
         task: taskName,
       })
@@ -433,7 +435,7 @@ const groupColors = [
       endDate: endDate,
     };
   
-    axios.post("/task/edit", payload)
+    axios.put(`/task/${taskId}`, payload)
       .then(function (response) {
         setGroupData(response.data.data);
         showToast("Task updated", "success"); // Show success after data is set and re-rendered
@@ -459,28 +461,15 @@ const groupColors = [
   
     const taskId = groups[groupIdx].tasks[idx].id;
   
-    fetch(`/task/delete/${taskId}`, {
-      method: "GET", // Or DELETE, ensure your route matches
-      headers: {
-        "X-Requested-With": "XMLHttpRequest",
-        Accept: "application/json",
-        "X-CSRF-TOKEN": getCsrfToken(), // Add CSRF token if using DELETE with CSRF protection
-      },
-    })
-      .then((response) => {
-        if (!response.ok) {
-          throw new Error(`HTTP error! status: ${response.status}`);
-        }
-        return response.json();
-      })
-      .then((data) => {
-        setGroupData(data.data);
-        showToast(data.message || "Task deleted", "success");
-      })
-      .catch((error) => {
-        console.error("Error deleting task:", error);
-        showToast("Failed to delete task", "error");
-      });
+    axios.delete(`/task/${taskId}`)
+       .then(function (response) {
+          setGroupData(response.data.data);
+          showToast(response.data.message || "Task deleted", "success");
+        })
+        .catch(function (error) {
+          console.error("Error deleting Task:", error.response?.data || error.message);
+          showToast(error.response?.data?.message || "Failed to delete Task", "error");
+        });
   }
   
   // --- Group Rename/Delete Functions ---
@@ -501,7 +490,7 @@ const groupColors = [
   
     if (newName) {
       const groupId = groups[groupIdx].id;
-      axios.post(`/group/update/${groupId}`, { name: newName })
+      axios.put(`/group/${groupId}`, { name: newName })
         .then(function (response) {
           setGroupData(response.data.data);
           showToast(response.data.message || "Group name updated", "success");
@@ -528,7 +517,7 @@ const groupColors = [
   function deleteGroup(groupIdx) {
     if (confirm("Are you sure you want to delete this group and all its tasks?")) {
       const groupId = groups[groupIdx].id;
-      axios.get(`/group/delete/${groupId}`) // Or DELETE, ensure route matches
+      axios.delete(`/group/${groupId}`) // Or DELETE, ensure route matches
         .then(function (response) {
           setGroupData(response.data.data);
           showToast(response.data.message || "Group deleted", "success");
@@ -565,7 +554,7 @@ const groupColors = [
       addGroupBtn.onclick = () => {
         const groupName = prompt("Enter group name:", "New Group");
         if (groupName && groupName.trim() !== "") {
-          axios.post("group/create", { name: groupName.trim() })
+          axios.post("/group", { name: groupName.trim() })
             .then(function (response) {
               setGroupData(response.data.data);
               showToast("Group added", "success");
