@@ -45,6 +45,6 @@ class RegisteredUserController extends Controller
 
         Auth::login($user);
 
-        return redirect(route('task', absolute: false));
+        return redirect(route('task.index', absolute: false));
     }
 }

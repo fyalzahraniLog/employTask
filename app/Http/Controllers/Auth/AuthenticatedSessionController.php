@@ -14,8 +14,11 @@ class AuthenticatedSessionController extends Controller
     /**
      * Display the login view.
      */
-    public function create(): View
+    public function create(): View|RedirectResponse
     {
+        if (Auth::check()) {
+            return redirect()->route('task.index');
+        }
         return view('auth.login');
     }
 
@@ -24,12 +27,13 @@ class AuthenticatedSessionController extends Controller
      */
     public function store(LoginRequest $request): RedirectResponse
     {
+
         $request->authenticate();
 
         $request->session()->regenerate();
 
         // return redirect()->intended(route('task', absolute: false));
-        return redirect('task');
+        return redirect()->route('task.index');
     }
 
     /**

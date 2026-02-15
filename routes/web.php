@@ -7,19 +7,19 @@ use App\Http\Controllers\Auth\AuthenticatedSessionController;
 use App\Http\Controllers\GroupController;
 use App\Models\Task;
 
-Route::get('/', [AuthenticatedSessionController::class, 'create'])->name('login');
+Route::get('/', [AuthenticatedSessionController::class , 'create'])->name('loginPage');
 
-Route::get('task', function () {
-    return view('newGroup');
-})->middleware(['auth', 'verified'])->name('task');
+// Route::get('task', function () {
+//     return view('newGroup');
+// })->middleware(['auth', 'verified'])->name('tasks');
 
 
 
 Route::middleware('auth')->group(function () {
 
     // task routes;
-    Route::post('task/TaskStatus', [TaskController::class, 'updateTaskStatus']);
-    Route::post('task/completion', [TaskController::class, 'complete']);
+    Route::post('task/TaskStatus', [TaskController::class , 'updateTaskStatus']);
+    Route::post('task/completion', [TaskController::class , 'complete']);
     Route::resource('task', TaskController::class)->only(['index', 'store', 'update', 'destroy']);
 
     // group routes;
